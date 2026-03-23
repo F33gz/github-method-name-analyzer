@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Method Name Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+        header {
+            width: 100%;
+            padding: 2rem;
+            text-align: center;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            background: -webkit-linear-gradient(45deg, #00C9FF, #92FE9D);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p {
+            font-weight: 300;
+            color: #ccc;
+        }
+        
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            max-width: 1000px;
+            margin: 2rem auto;
+            gap: 2rem;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #00C9FF;
+            transition: color 0.3s ease;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        input[type="number"] {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            outline: none;
+            width: 80px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 500px;
+            position: relative;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Method Name Analyzer</h1>
+        <p>Real-time extraction of method name concepts from popular Python & Java GitHub Repos</p>
+    </header>
+
+    <div class="dashboard">
+        <div class="glass-panel stats-container">
+            <div class="stat-box">
+                <div class="stat-value" id="totalWords">0</div>
+                <div class="stat-label">Words Extracted</div>
+            </div>
+            <div class="controls">
+                <span>Top N Words:</span>
+                <input type="number" id="limitInput" value="20" min="5" max="50">
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <div class="chart-container">
+                <canvas id="wordChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('wordChart').getContext('2d');
+        
+        let gradient;
+        function updateGradient() {
+            gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, '#00C9FF');
+            gradient.addColorStop(1, '#92FE9D');
+        }
+        updateGradient();
+
+        let wordChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Frequency',
+                    data: [],
+                    backgroundColor: gradient,
+                    borderRadius: 8,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 500,
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: { color: '#ccc' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#ccc', font: { size: 14 } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: { size: 16 },
+                        bodyFont: { size: 14 },
+                        padding: 15,
+                        displayColors: false
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            updateGradient();
+            wordChart.data.datasets[0].backgroundColor = gradient;
+        });
+
+        async function updateData() {
+            const limit = document.getElementById('limitInput').value || 20;
+            try {
+                const response = await fetch(`/api/data?limit=${limit}`);
+                const result = await response.json();
+                
+                document.getElementById('totalWords').innerText = result.total.toLocaleString();
+                
+                wordChart.data.labels = result.labels;
+                wordChart.data.datasets[0].data = result.data;
+                wordChart.update();
+            } catch (err) {
+            }
+        }
+
+        setInterval(updateData, 2000);
+        updateData();
+
+        document.getElementById('limitInput').addEventListener('change', updateData);
+    </script>
+</body>
+</html>
